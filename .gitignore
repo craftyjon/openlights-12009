@@ -1,17 +1,10 @@
-# Object files
+# Binaries / Generated
+*.lst
 *.o
 
-# Libraries
-*.lib
-*.a
+Debug/*
+Release/*
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
 
-# Executables
-*.exe
-*.out
-*.app
+# Atmel Studio
+*.atsuo
