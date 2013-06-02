@@ -28,9 +28,9 @@
 #include <conf_board.h>
 #include <string.h>
 
+#include "globals.h"
 #include "init.h"
 #include "pins.h"
-#include "globals.h"
 
 
 // Setup I/O pins.

@@ -33,26 +33,35 @@
 
 void process_usb(uint8_t byte)
 {
+	static uint8_t escape_active;
 	//usart_putchar(&USARTC0, 0xFF);
 	//usart_putchar(&USARTC0, g_cmdState);
 	switch (g_cmdState) {
 		case STATE_IDLE:
+			escape_active = 0;
 			if (byte == ESCAPE_CHAR) {
 				g_cmdState = STATE_ESCAPE;
 			}
 			break;
 		
 		case STATE_ESCAPE:
-escape:
+			//usart_putchar(&USARTC0, 0x99);
 			if (byte == ESCAPE_SOF) {
 				g_cmdState = STATE_ADDRESS;
 			} else if (byte == ESCAPE_99) {
+				//usart_putchar(&USARTC0, 0x01);
+				byte = 0x99;
 				g_cmdState = g_escapeReturnState;
 				if (g_cmdState == STATE_START) {
 					goto start;
 				} else if (g_cmdState == STATE_RECEIVE) {
+					//usart_putchar(&USARTC0, 0x03);
 					goto receive;
 				}
+			} else {
+				// Something bad happened
+				g_frame = 0;
+				g_cmdState = STATE_IDLE;
 			}
 			break;
 			
@@ -84,11 +93,11 @@ start:
 					g_usbDataLength = USB_BUFFER_SIZE - 1;
 				}
 				
-				if (g_usbDataLength > ARRAY_SIZE) {
+				/*if (g_usbDataLength > ARRAY_SIZE) {
 					g_cmdState = STATE_IDLE;
 					asm("nop;");
 					break;
-				}
+				}*/
 				
 				g_usbDataCount = 0;
 				g_cmdState = STATE_RECEIVE;
@@ -96,9 +105,18 @@ start:
 			break;
 
 		case STATE_RECEIVE:
-			if (byte == ESCAPE_CHAR) {
+			if (escape_active) {
+				escape_active = 0;
+				if (byte == ESCAPE_99) {
+					byte = 0x99;
+				}
+			} else if (byte == ESCAPE_CHAR) {
+				escape_active = 1;
+				/*
 				g_escapeReturnState = STATE_RECEIVE;
 				g_cmdState = STATE_ESCAPE;
+				//usart_putchar(&USARTC0, 0xff);
+				*/
 				break;
 			}
 receive:
@@ -118,6 +136,8 @@ receive:
 			}
 			break;
 		default:
+			// Something bad happened
+			g_frame = 0;
 			g_cmdState = STATE_IDLE;
 			break;
 	}

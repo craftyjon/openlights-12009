@@ -33,7 +33,7 @@ bool usb_checksum(uint8_t input);
 #endif
 
 #define ESCAPE_CHAR 0x99
-#define ESCAPE_99 0x01
+#define ESCAPE_99 0x55
 #define ESCAPE_SOF 0x00
 
 enum {
