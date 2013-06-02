@@ -117,6 +117,9 @@ receive:
 				g_cmdState = STATE_IDLE;
 			}
 			break;
+		default:
+			g_cmdState = STATE_IDLE;
+			break;
 	}
 }
 
