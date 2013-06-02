@@ -33,29 +33,45 @@
 
 void process_usb(uint8_t byte)
 {
-	ioport_toggle_pin_level(LED_ACT);
-
+	//usart_putchar(&USARTC0, 0xFF);
+	//usart_putchar(&USARTC0, g_cmdState);
 	switch (g_cmdState) {
 		case STATE_IDLE:
-			// Wait for start sequence
-			if (byte == USB_START_BYTE) {
-				g_cmdState = STATE_ADDRESS;					
+			if (byte == ESCAPE_CHAR) {
+				g_cmdState = STATE_ESCAPE;
 			}
 			break;
-
-		case STATE_ADDRESS:
-			if ((byte == 0x00) || byte == g_address) {
-				g_usbDataCount = 0;
-				g_cmdState = STATE_START;
-			} else {
-				g_cmdState = STATE_IDLE;
-				// TODO: It might be better to read in the data length and know
-				// to ignore the next N bytes
+		
+		case STATE_ESCAPE:
+escape:
+			if (byte == ESCAPE_SOF) {
+				g_cmdState = STATE_ADDRESS;
+			} else if (byte == ESCAPE_99) {
+				g_cmdState = g_escapeReturnState;
+				if (g_cmdState == STATE_START) {
+					goto start;
+				} else if (g_cmdState == STATE_RECEIVE) {
+					goto receive;
+				}
 			}
+			break;
+			
+		case STATE_ADDRESS:
+			ioport_set_pin_high(LED_ACT);
+			//usart_putchar(&USARTC0, 0x00);
+			g_current_cmd_address = byte;
+			g_usbDataCount = 0;
+			g_cmdState = STATE_START;
 			break;
 
 		case STATE_START:
-			ioport_toggle_pin_level(LED_DATA);
+			if (byte == ESCAPE_CHAR) {
+				g_escapeReturnState = STATE_START;
+				g_cmdState = STATE_ESCAPE;
+				break;
+			}
+start:
+			//usart_putchar(&USARTC0, g_usbDataCount);
 			if (g_usbDataCount == 0) {
 				g_usbCommand = byte;
 				g_usbDataCount++;
@@ -68,37 +84,43 @@ void process_usb(uint8_t byte)
 					g_usbDataLength = USB_BUFFER_SIZE - 1;
 				}
 				
+				if (g_usbDataLength > ARRAY_SIZE) {
+					g_cmdState = STATE_IDLE;
+					asm("nop;");
+					break;
+				}
+				
 				g_usbDataCount = 0;
 				g_cmdState = STATE_RECEIVE;
 			}
 			break;
 
 		case STATE_RECEIVE:
-			if (g_usbDataCount < g_usbDataLength) {
-				g_usbDataBuffer[g_usbDataCount] = byte;
-				g_usbDataCount++;
+			if (byte == ESCAPE_CHAR) {
+				g_escapeReturnState = STATE_RECEIVE;
+				g_cmdState = STATE_ESCAPE;
+				break;
+			}
+receive:
+			//usart_putchar(&USARTC0, g_usbDataCount);
+			if (g_usbDataCount < g_usbDataLength - 1) {
+				g_usbDataBuffer[g_usbDataCount++] = byte;
 			} else {
-				g_cmdState = STATE_CHECKSUM;
-				
-				if (usb_checksum(byte)) {
+				//usart_putchar(&USARTC0, 0x88);
+				g_usbDataBuffer[g_usbDataCount] = byte;
+				if (g_current_cmd_address == g_address || g_current_cmd_address == 0) {
+					//usart_putchar(&USARTC0, 0x99);
+					ioport_set_pin_high(LED_DATA);
 					process_command();
 				}
+
 				g_cmdState = STATE_IDLE;
 			}
-			
-			break;
-
-		case STATE_CHECKSUM:
-			if (usb_checksum(byte)) {
-				process_command();
-			}
-
-			g_cmdState = STATE_IDLE;
 			break;
 	}
 }
 
-
+#ifdef CHECKSUM
 bool usb_checksum(uint8_t input)
 {
 	uint8_t calc = 0;
@@ -114,3 +136,4 @@ bool usb_checksum(uint8_t input)
 	
 	return (input == calc);
 }
+#endif

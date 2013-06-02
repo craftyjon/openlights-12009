@@ -31,25 +31,25 @@
 
 void process_command()
 {
-	uint16_t i, j;
+	uint16_t i;
 
 	switch (g_usbCommand) {
 		case SET_ARRAY:
-			j = min(g_usbDataLength, (3 * num_leds));
-			for (i = 0; i < j; i++) {
-				data_buffer[i] = g_usbDataBuffer[i];
-			}
-			dirty = 1;
+			//j = min(g_usbDataLength, (3 * num_leds));
+			g_lock = 1;
+			memcpy(data_pointer, g_usbDataBuffer, ARRAY_SIZE);
+			g_lock = 0;
+			g_dirty = 1;
 			break;
 
 		case BLACKOUT:
-			memset(&data_buffer, 0, sizeof(data_buffer));
-			dirty = 1;
+			memset(data_buffer, 0, sizeof(data_buffer));
+			g_dirty = 1;
 			break;
 
 		case SET_ALL:
-			memset(&data_buffer, g_usbDataBuffer[0], sizeof(data_buffer));
-			dirty = 1;
+			memset(data_buffer, g_usbDataBuffer[0], sizeof(data_buffer));
+			g_dirty = 1;
 			break;
 			
 		case SET_ALL_RGB:
@@ -58,7 +58,7 @@ void process_command()
 				data_buffer[(3 * i) + 1] = g_usbDataBuffer[1];
 				data_buffer[(3 * i) + 2] = g_usbDataBuffer[2];
 			}
-			dirty = 1;
+			g_dirty = 1;
 			break;
 		
 		case SET_NUM_LEDS:
@@ -72,7 +72,16 @@ void process_command()
 		case IDENTIFY:
 			identify();
 			break;
+			
+		case START_FRAME:
+			g_frame = 1;
+			break;
+		
+		case END_FRAME:
+			g_frame = 0;
+			break;
 	}
+	updated_at = ticks;
 }
 
 
@@ -97,5 +106,5 @@ void identify(void)
 		}
 	}
 
-	dirty = 1;
+	g_dirty = 1;
 }

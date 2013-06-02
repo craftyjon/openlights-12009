@@ -111,15 +111,27 @@ void init_globals(void)
 
 	// Init byte-oriented communications (via USB or RS485)
 	g_cmdState = STATE_IDLE;
+	g_escapeReturnState = STATE_IDLE;
 	g_usbDataLength = 0;
 	g_usbDataCount = 0;
 	g_usbConnected = 0;
 	g_rs485data = 0;
 	g_rs485rdy = 0;
+	
+	ticks = 0;
+	updated_at = 0;
+	g_lock = 0;
 
 	// Init strand data buffers
-	memset(&data_buffer, 0, sizeof(data_buffer));
-	dirty = 1;
+	memset(data_buffer, 0, sizeof(data_buffer));
+	//memset(back_buffer, 0, sizeof(back_buffer));
+	data_pointer = data_buffer;
+	g_dirty = 1;
+	g_pingpoing = 0;
+	usb_dataready = 0;
+	g_frame = 0;
+	rx_write_ptr = 0;
+	rx_read_ptr = 0;
 }
 
 

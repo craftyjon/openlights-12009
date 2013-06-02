@@ -32,6 +32,8 @@
 #include "globals.h"
 #undef GLOBALS_ALLOC
 
+//void cdc_rx_callback(void);
+
 #include "pins.h"
 #include "usb.h"
 #include "commands.h"
@@ -41,9 +43,16 @@
 // High-frequency timer
 static void strand_output_isr(void)
 {
-	if (dirty) {
-		dirty = 0;
-		spi_write_packet(&SPIC, data_buffer, (3 * num_leds));
+	if (g_dirty && !g_frame && !g_lock) {
+		g_dirty = 0;
+		// Reset strand by holding clock low for 500us
+		PORTC.OUTCLR = (1<<7);
+		for (int dly = 0; dly < 8000; dly++) { asm("nop;"); }
+		PORTC.OUTSET = (1<<7);
+		
+		spi_write_packet(&SPIC, data_buffer, ARRAY_SIZE);
+		ioport_set_pin_low(LED_ACT);
+		ioport_set_pin_low(LED_DATA);
 	}
 }
 
@@ -51,28 +60,41 @@ static void strand_output_isr(void)
 // Low-frequency timer
 static void tick_isr(void)
 {
-	ticks++;
-	
 	// Refresh the strand periodically even if no new data
-	if (g_cmdState == STATE_IDLE) {
-		ioport_toggle_pin_level(LED_ACT);
+	if (!g_frame && (updated_at != ticks) && (ticks % 2 == 0)) {
+		ioport_set_pin_high(LED_ACT);
 		ioport_set_pin_low(LED_DATA);
-		dirty = 1;
+		g_dirty = 1;
+		updated_at = ticks;
+		//g_cmdState = STATE_IDLE;
 	}
+	
+	ticks++;
 }
 
 
 // RS485 receive ISR
 ISR(USARTC0_RXC_vect)
 {
-	g_rs485data = USARTC0.DATA;
+	rx_buffer[rx_write_ptr] = USARTC0.DATA;
+	rx_write_ptr = (rx_write_ptr + 1) % RX_BUFFER_SIZE;
+	//usb_inbyte = USARTC0.DATA;
 	g_rs485rdy = 1;
 }
 
+/*
+void cdc_rx_callback(void)
+{
+	ioport_toggle_pin_level(LED_DATA);
+	usb_inbyte = udi_cdc_getc();
+	usart_putchar(&USARTC0, usb_inbyte);
+	usb_dataready = 1;	
+}
+*/
 
 int main (void)
 {
-	uint8_t usbbyte;
+	//uint8_t usbbyte;
 
 	// ASF board initialization
 	sysclk_init();
@@ -85,13 +107,13 @@ int main (void)
 	init_globals();
 	init_strand();
 	init_rs485();
-	init_usb();
+	//init_usb();
 
 	// Setup timer interrupt for strand output
 	tc_enable(&TCC0);
 	tc_set_overflow_interrupt_callback(&TCC0, strand_output_isr);
 	tc_set_wgm(&TCC0, TC_WG_NORMAL);
-	tc_write_period(&TCC0, 2083);	// about 60 fps
+	tc_write_period(&TCC0, 818);	// about 60 fps
 	tc_write_clock_source(&TCC0, TC_CLKSEL_DIV64_gc);	// 125 khz
 	tc_set_overflow_interrupt_level(&TCC0, TC_INT_LVL_HI);
 	
@@ -103,11 +125,12 @@ int main (void)
 	tc_write_period(&TCC1, 0xFFFF);
 	tc_write_clock_source(&TCC1, TC_CLKSEL_DIV256_gc);
 	tc_set_overflow_interrupt_level(&TCC1, TC_INT_LVL_LO);
-
 	
 	// run the "Identify" command at startup
 	g_usbCommand = IDENTIFY;
 	process_command();
+	
+	g_cmdState = STATE_IDLE;
 	
 	while (1) {
 		if (!ioport_get_pin_level(SW5)) {	// Test mode
@@ -116,10 +139,12 @@ int main (void)
 			ioport_set_pin_low(RS485_REn);
 			ioport_set_pin_high(LED_DATA);
 			memset(data_buffer, 100, sizeof(data_buffer));
-			dirty = 1;
+			g_dirty = 1;
+			usart_putchar(&USARTC0, 'U');
 		} else {
 
-			if (udi_cdc_is_rx_ready()) {
+			/*if (udi_cdc_is_rx_ready()) {
+			//if (usb_dataready) {
 				if (!g_usbConnected) {
 					g_usbConnected = 1;
 					// Enable RS485 transmitter if USB is connected.
@@ -128,13 +153,34 @@ int main (void)
 					ioport_set_pin_high(RS485_REn);
 				}
 				
-				usbbyte = udi_cdc_getc();
-				usart_putchar(&USARTC0, usbbyte);
-				process_usb(usbbyte);
-			} else if (g_rs485rdy) {
+				//usb_dataready = 0;
+				
+				//do {
+					usb_inbyte = udi_cdc_getc();
+					usart_putchar(&USARTC0, usb_inbyte);
+					process_usb(usb_inbyte);
+				//} while (udi_cdc_is_rx_ready());				
+			} else */
+			if (rx_write_ptr != rx_read_ptr) {
+			//if (g_rs485rdy) {
 				g_rs485rdy = 0;
-				process_usb(g_rs485data);
+				process_usb(rx_buffer[rx_read_ptr]);
+				rx_read_ptr = (rx_read_ptr + 1) % RX_BUFFER_SIZE;
+				//process_usb(usb_inbyte);
 			}
-		}		
+		}
+		/*
+		if (g_dirty && !g_frame) { // && !g_lock) {
+			g_dirty = 0;
+			// Reset strand by holding clock low for 500us
+			PORTC.OUTCLR = (1<<7);
+			for (int dly = 0; dly < 8000; dly++) { asm("nop;"); }
+			PORTC.OUTSET = (1<<7);
+			
+			spi_write_packet(&SPIC, data_buffer, ARRAY_SIZE);
+			ioport_set_pin_low(LED_ACT);
+			ioport_set_pin_low(LED_DATA);
+		}
+		*/
 	}
 }

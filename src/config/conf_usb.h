@@ -75,12 +75,14 @@
 //! Interface callback definition
 #define  UDI_CDC_ENABLE_EXT(port)          true
 #define  UDI_CDC_DISABLE_EXT(port)
+//#define  UDI_CDC_RX_NOTIFY(port) cdc_rx_callback()
 #define  UDI_CDC_RX_NOTIFY(port)
+//extern void cdc_rx_callback(void);
 #define  UDI_CDC_SET_CODING_EXT(port,cfg)
 #define  UDI_CDC_SET_DTR_EXT(port,set)
 #define  UDI_CDC_SET_RTS_EXT(port,set)
 
-#define  UDI_CDC_DEFAULT_RATE             2000000
+#define  UDI_CDC_DEFAULT_RATE             5000000
 #define  UDI_CDC_DEFAULT_STOPBITS         CDC_STOP_BITS_1
 #define  UDI_CDC_DEFAULT_PARITY           CDC_PAR_NONE
 #define  UDI_CDC_DEFAULT_DATABITS         8

@@ -27,15 +27,21 @@
 #define _USB_H
 
 void process_usb(uint8_t byte);
+
+#ifdef CHECKSUM
 bool usb_checksum(uint8_t input);
+#endif
+
+#define ESCAPE_CHAR 0x99
+#define ESCAPE_99 0x01
+#define ESCAPE_SOF 0x00
 
 enum {
 	STATE_IDLE,
+	STATE_ADDRESS,
 	STATE_START,
-    STATE_ADDRESS,
 	STATE_RECEIVE,
-	STATE_CHECKSUM,
-	STATE_DONE
+	STATE_ESCAPE
 } USB_STATE;
 
 
