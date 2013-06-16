@@ -114,6 +114,7 @@ start:
 				escape_active = 0;
 				//if (byte == ESCAPE_99) {
 					byte = 0x99;
+					g_usbDataLength--;
 				//}
 			}
 receive:

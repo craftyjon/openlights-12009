@@ -150,7 +150,7 @@ int main (void)
 			ioport_set_pin_high(LED_DATA);
 			memset(data_buffer, 100, sizeof(data_buffer));
 			g_dirty = 1;
-			usart_putchar(&USARTC0, 'U');
+			//usart_putchar(&USARTC0, 'U');
 		} else {
 
 			/*if (udi_cdc_is_rx_ready()) {
