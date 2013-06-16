@@ -43,17 +43,27 @@
 // High-frequency timer
 static void strand_output_isr(void)
 {
+	//static uint8_t b = 0;
+	
+	//uint8_t ints = cpu_irq_save();
+	
 	if (g_dirty && !g_frame && !g_lock) {
+		//b++;
 		g_dirty = 0;
 		// Reset strand by holding clock low for 500us
 		PORTC.OUTCLR = (1<<7);
+		//delay_us(500);
 		for (int dly = 0; dly < 8000; dly++) { asm("nop;"); }
 		PORTC.OUTSET = (1<<7);
 		
+		//memset(data_buffer, b, ARRAY_SIZE);
+			
 		spi_write_packet(&SPIC, data_buffer, ARRAY_SIZE);
 		ioport_set_pin_low(LED_ACT);
 		ioport_set_pin_low(LED_DATA);
 	}
+	
+	//cpu_irq_restore(ints);
 }
 
 

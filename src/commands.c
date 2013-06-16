@@ -37,7 +37,7 @@ void process_command()
 		case SET_ARRAY:
 			//j = min(g_usbDataLength, (3 * num_leds));
 			g_lock = 1;
-			memcpy(data_pointer, g_usbDataBuffer, ARRAY_SIZE);
+			memcpy(data_buffer, g_usbDataBuffer, ARRAY_SIZE);
 			g_lock = 0;
 			g_dirty = 1;
 			break;

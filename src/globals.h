@@ -57,7 +57,8 @@ EXTERN volatile uint8_t usb_dataready;
 /* LEDs */
 #define MAX_LEDS 160
 #define ARRAY_SIZE 480
-#define RX_BUFFER_SIZE 100
+//#define RX_BUFFER_SIZE 490
+#define RX_BUFFER_SIZE 1000
 EXTERN uint16_t num_leds;
 
 EXTERN uint16_t num_bytes;
@@ -75,7 +76,7 @@ EXTERN uint8_t g_frame;
 
 
 /* USB */
-#define USB_BUFFER_SIZE (10 + ARRAY_SIZE)
+#define USB_BUFFER_SIZE 1000
 
 EXTERN volatile bool _usb_configured;
 
